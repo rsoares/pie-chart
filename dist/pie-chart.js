@@ -1,4 +1,4 @@
-/*! pie-chart - v1.0.0 - 2015-08-12
+/*! pie-chart - v1.0.0 - 2015-12-08
 * https://github.com/n3-charts/pie-chart
 * Copyright (c) 2015 n3-charts  Licensed ,  */
 (function() {
@@ -122,20 +122,20 @@ angular.module('n3-pie-utils', [])
 
 updatePaths: function(svg, data, dimensions, options) {
   var tools = this.getTools(dimensions, options);
-
+  
   var tween = function(d) {
     var oldAngles = this.__current ? this.__current : {startAngle: d.startAngle, endAngle: d.startAngle};
     var newAngles = {startAngle: d.startAngle, endAngle: d.endAngle};
 
     var i = d3.interpolate(oldAngles, newAngles);
-
+    
     return function(t) {return tools.arc(i(t)); };
   };
-
+  
   var paths = svg.selectAll("#n3-pie-arcs")
     .selectAll('.arc')
     .data(tools.pie(data), function(d) {return d.data.label;})
-
+  
   paths.enter()
     .append("path")
       .attr({
@@ -147,7 +147,7 @@ updatePaths: function(svg, data, dimensions, options) {
         "fill-opacity": 0.8
       })
   ;
-
+  
   paths
     .transition()
       .duration(250)
@@ -156,9 +156,9 @@ updatePaths: function(svg, data, dimensions, options) {
         this.__current = {startAngle: d.startAngle, endAngle: d.endAngle};
       })
   ;
-
+  
   paths.exit().remove();
-
+  
   return this;
 },
 
@@ -176,7 +176,7 @@ getTools: function(dimensions, options) {
   if (options.mode === "gauge") {
     pieLayout.sort(null);
   }
-
+  
   return {pie: pieLayout, arc: arc};
 },
 
@@ -199,43 +199,51 @@ updateLegend: function(svg, data, dimensions, options) {
 
 updateRegularLegend: function(svg, data, dimensions, options) {
   var that = this;
-  var radius = this.getRadius(dimensions);
-  var availableWidth = radius - options.thickness;
+  var radius;
+  var availableWidth;
+  var legendHalfHeight;
+  var scale;
+  var items;
 
-  var legendHalfHeight = data.length*availableWidth/10;
+  if( options.drawLegend ) {
+    radius = this.getRadius(dimensions);
+    availableWidth = radius - options.thickness;
 
-  var scale = d3.scale.linear()
-    .range([-legendHalfHeight, legendHalfHeight])
-    .domain([0, data.length-1])
-    .nice()
+    legendHalfHeight = data.length*availableWidth/10;
+
+    scale = d3.scale.linear()
+      .range([-legendHalfHeight, legendHalfHeight])
+      .domain([0, data.length-1])
+      .nice()
 
 
-  var items = svg.selectAll("#n3-pie-legend")
-    .selectAll(".legend-item")
-      .data(data, function(d) {return d.label;});
+    items = svg.selectAll("#n3-pie-legend")
+      .selectAll(".legend-item")
+        .data(data, function(d) {return d.label;});
 
-  items.enter()
-    .append("text")
-      .classed("legend-item", true)
-      .on("mouseover", this.onMouseOver(svg))
-      .on("mouseout", this.onMouseOut(svg))
+    items.enter()
+      .append("text")
+        .classed("legend-item", true)
+        .on("mouseover", this.onMouseOver(svg))
+        .on("mouseout", this.onMouseOut(svg))
 
-  items
-    .text(this.getLegendLabelFunction(availableWidth))
-    .attr({
-      "text-anchor": "middle",
-      "transform": function(d, i) {
-        return "translate(0, " + scale(i) + ")";
-      }
-    })
-    .style({
-      "font-family": "monospace",
-      "font-size": Math.max(12, availableWidth/10) + "px",
-      "fill": function(d) {return d.color;},
-      "fill-opacity": 0.8
-    });
+    items
+      .text(this.getLegendLabelFunction(availableWidth))
+      .attr({
+        "text-anchor": "middle",
+        "transform": function(d, i) {
+          return "translate(0, " + scale(i) + ")";
+        }
+      })
+      .style({
+        "font-family": "monospace",
+        "font-size": Math.max(12, availableWidth/10) + "px",
+        "fill": function(d) {return d.color;},
+        "fill-opacity": 0.8
+      });
 
-  items.exit().remove();
+    items.exit().remove();
+  }
 },
 
 updateGaugeLegend: function(svg, data, dimensions, options) {
@@ -344,7 +352,8 @@ getLegendLabel: function(label, value, totalLength) {
   value.split("").forEach(function(c, i) {dots[totalLength - value.length + i] = c;});
 
   return dots.join("");
-},
+}
+,
 
 increase_brightness: function (hex, percent) {
   hex = hex.replace(/^\s*#|\s*$/g, '');
@@ -367,7 +376,7 @@ addDataForGauge: function(data, options) {
   if (!options || options.mode !== "gauge" || data.length !== 1) {
     return data;
   }
-
+  
   data = data.concat();
 
   var colorComplement = "white";
@@ -393,7 +402,7 @@ clean: function(element) {
 
 bootstrap: function(element, dimensions) {
   d3.select(element).classed('chart', true);
-
+  
   var width = dimensions.width;
   var height = dimensions.height;
 
@@ -405,7 +414,7 @@ bootstrap: function(element, dimensions) {
       (dimensions.width*.5) + ',' +
       (dimensions.height*.5) + ')'
   );
-
+  
   return svg;
 },
 
@@ -421,17 +430,17 @@ looksLikeSameSeries: function(newData, oldData) {
   if (newData.length !== oldData.length) {
     return false;
   }
-
+  
   for (var i = 0; i < newData.length; i++) {
     if (oldData[i].label !== newData[i].label) {
       return false;
     }
-
+    
     if (oldData[i].color !== newData[i].color) {
       return false;
     }
   }
-
+  
   return true;
 },
 
@@ -442,11 +451,14 @@ sanitizeOptions: function(options) {
     options.thickness = parseInt(options.thickness);
   }
 
-
   if (options.mode === "gauge") {
     this.sanitizeGaugeOptions(options);
   }
 
+  if(options.drawLegend === undefined) {
+    options.drawLegend = false;
+  }
+  
   return options;
 },
 
@@ -457,6 +469,7 @@ sanitizeGaugeOptions: function(options) {
     options.total = parseInt(options.total);
   }
 }
+
 
   };
 }])
